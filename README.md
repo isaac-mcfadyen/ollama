@@ -1,75 +1,56 @@
-![ollama](https://github.com/jmorganca/ollama/assets/251292/961f99bb-251a-4eec-897d-1ba99997ad0f)
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/jmorganca/ollama/assets/251292/961f99bb-251a-4eec-897d-1ba99997ad0f">
+    <img alt="logo" src="https://github.com/jmorganca/ollama/assets/251292/961f99bb-251a-4eec-897d-1ba99997ad0f">
+  </picture>
+</div>
 
 # Ollama
 
-Run large language models with `llama.cpp`.
+Ollama's helps you to create, run and share self-contained large language models (LLMs). Think of it like a "Docker for LLMs", where a model's weights, configuration, prompts, data and more is bundled into one package that can be shipped and run on any machine.
 
-> Note: certain models that can be run with Ollama are intended for research and/or non-commercial use only.
+## Examples
 
-### Features
-
-- Download and run popular large language models
-- Switch between multiple models on the fly
-- Hardware acceleration where available (Metal, CUDA)
-- Fast inference server written in Go, powered by [llama.cpp](https://github.com/ggerganov/llama.cpp)
-- REST API to use with your application (python, typescript SDKs coming soon)
-
-## Install
-
-- [Download](https://ollama.ai/download) for macOS
-- Download for Windows (coming soon)
-
-You can also build the [binary from source](#building).
-
-## Quickstart
-
-Run a fast and simple model.
+### Quickstart
 
 ```
 ollama run orca
+>>> hi
+Hello! How can I help you today?
 ```
 
-## Example models
+### Creating a model
 
-### 💬 Chat
-
-Have a conversation.
+Create a `Modelfile`:
 
 ```
-ollama run vicuna "Why is the sky blue?"
+FROM orca
+SYSTEM "You are Mario from super mario brothers. Answer questions as Mario."
 ```
 
-### 🗺️ Instructions
-
-Get a helping hand.
+Next, create and run the model:
 
 ```
-ollama run orca "Write an email to my boss."
+ollama create mario -f Modelfile
+ollama run mario
+>>> hi
+Hello! It's your friend Mario, from the mushroom kingdom!
 ```
 
-### 🔎 Ask questions about documents
+## Install
 
-Send the contents of a document and ask questions about it.
+- [Download](https://ollama.ai/download) for macOS (Apple Silicon)
+- Download for Windows (coming soon)
 
-```
-ollama run nous-hermes "$(cat input.txt)", please summarize this story
-```
+## Model library
 
-### 📖 Storytelling
+Ollama includes a library of open-source, pre-trained models. More models are coming soon.
 
-Venture into the unknown.
-
-```
-ollama run nous-hermes "Once upon a time"
-```
-
-## Advanced usage
-
-### Run a local model
-
-```
-ollama run ~/Downloads/vicuna-7b-v1.3.ggmlv3.q4_1.bin
-```
+| Model       | Description                                                                                                                                                                                                     | Parameters | Size  | Download                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----- | ------------------------- |
+| Orca Mini   | An OpenLLaMa-3B model model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches. | 3B         | 1.9GB | `ollama pull orca`        |
+| Vicuna      | Vicuna is a chat assistant trained by fine-tuning LLaMA on user-shared conversations collected from ShareGPT                                                                                                    | 7B         | 3.9GB | `ollama pull vicuna`      |
+| Nous-Hermes | Nous-Hermes-13b is a state-of-the-art language model fine-tuned on over 300,000 instructions.                                                                                                                   | 13         | 7.2GB | `ollama pull nous-hermes` |
 
 ## Building
 
@@ -86,7 +67,7 @@ To run it start the server:
 Finally, run a model!
 
 ```
-./ollama run ~/Downloads/vicuna-7b-v1.3.ggmlv3.q4_1.bin
+./ollama run orca
 ```
 
 ## API Reference
