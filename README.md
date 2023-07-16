@@ -7,7 +7,7 @@
 
 # Ollama
 
-Ollama's helps you to create, run and share self-contained large language models (LLMs). Think of it like a "Docker for LLMs", where a model's weights, configuration, prompts, data and more is bundled into one package that can be shipped and run on any machine.
+Create, run and share self-contained large language models (LLMs). Think of it like a "Docker for LLMs", where a model's weights, configuration, prompts, data and more is bundled into one package that can be shipped and run on any machine.
 
 ## Examples
 
@@ -46,11 +46,11 @@ Hello! It's your friend Mario, from the mushroom kingdom!
 
 Ollama includes a library of open-source, pre-trained models. More models are coming soon.
 
-| Model       | Description                                                                                                                                                                                                     | Parameters | Size  | Download                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----- | ------------------------- |
-| Orca Mini   | An OpenLLaMa-3B model model trained on explain tuned datasets, created using Instructions and Input from WizardLM, Alpaca & Dolly-V2 datasets and applying Orca Research Paper dataset construction approaches. | 3B         | 1.9GB | `ollama pull orca`        |
-| Vicuna      | Vicuna is a chat assistant trained by fine-tuning LLaMA on user-shared conversations collected from ShareGPT                                                                                                    | 7B         | 3.9GB | `ollama pull vicuna`      |
-| Nous-Hermes | Nous-Hermes-13b is a state-of-the-art language model fine-tuned on over 300,000 instructions.                                                                                                                   | 13         | 7.2GB | `ollama pull nous-hermes` |
+| Model       | Parameters | Size  | Download                  |
+| ----------- | ---------- | ----- | ------------------------- |
+| Orca Mini   | 3B         | 1.9GB | `ollama pull orca`        |
+| Vicuna      | 7B         | 3.9GB | `ollama pull vicuna`      |
+| Nous-Hermes | 13         | 7.2GB | `ollama pull nous-hermes` |
 
 ## Building
 
