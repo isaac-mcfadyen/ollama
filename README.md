@@ -14,7 +14,7 @@ Create, run and share self-contained large language models (LLMs). Think of it l
 ### Quickstart
 
 ```
-ollama run orca
+ollama run library/orca:latest
 >>> hi
 Hello! How can I help you today?
 ```
@@ -24,8 +24,14 @@ Hello! How can I help you today?
 Create a `Modelfile`:
 
 ```
-FROM orca
-SYSTEM "You are Mario from super mario brothers. Answer questions as Mario."
+FROM library/nous-hermes:latest
+PROMPT """
+You are super mario from super mario bros. Answer instructions as Mario only.
+
+### Instruction: {{ .Prompt }}
+
+### Response:
+"""
 ```
 
 Next, create and run the model:
@@ -34,7 +40,7 @@ Next, create and run the model:
 ollama create mario -f Modelfile
 ollama run mario
 >>> hi
-Hello! It's your friend Mario, from the mushroom kingdom!
+Hello! It's your friend Mario.
 ```
 
 ## Install
@@ -46,11 +52,11 @@ Hello! It's your friend Mario, from the mushroom kingdom!
 
 Ollama includes a library of open-source, pre-trained models. More models are coming soon.
 
-| Model       | Parameters | Size  | Download                  |
-| ----------- | ---------- | ----- | ------------------------- |
-| Orca Mini   | 3B         | 1.9GB | `ollama pull orca`        |
-| Vicuna      | 7B         | 3.9GB | `ollama pull vicuna`      |
-| Nous-Hermes | 13         | 7.2GB | `ollama pull nous-hermes` |
+| Model       | Parameters | Size  | Download                                 |
+| ----------- | ---------- | ----- | ---------------------------------------- |
+| Orca Mini   | 3B         | 1.9GB | `ollama pull library/orca:latest`        |
+| Vicuna      | 7B         | 3.9GB | `ollama pull library/vicuna:latest`      |
+| Nous-Hermes | 13         | 7.2GB | `ollama pull library/nous-hermes:latest` |
 
 ## Building
 
