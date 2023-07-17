@@ -63,12 +63,12 @@ func RunRun(cmd *cobra.Command, args []string) error {
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 		if err := pull(args[0]); err != nil {
-			var apiStatusError api.StatusError
-			if !errors.As(err, &apiStatusError) {
+			var errorResponse api.ErrorResponse
+			if !errors.As(err, &errorResponse) {
 				return err
 			}
 
-			if apiStatusError.StatusCode != http.StatusBadGateway {
+			if errorResponse.Code != http.StatusBadGateway {
 				return err
 			}
 		}

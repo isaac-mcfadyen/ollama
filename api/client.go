@@ -12,25 +12,7 @@ import (
 )
 
 type Client struct {
-	base    url.URL
-	HTTP    http.Client
-	Headers http.Header
-}
-
-func checkError(resp *http.Response, body []byte) error {
-	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		return nil
-	}
-
-	apiError := StatusError{StatusCode: resp.StatusCode}
-
-	err := json.Unmarshal(body, &apiError)
-	if err != nil {
-		// Use the full body as the message if we fail to decode a response.
-		apiError.Message = string(body)
-	}
-
-	return apiError
+	base url.URL
 }
 
 func NewClient(hosts ...string) *Client {
@@ -41,7 +23,6 @@ func NewClient(hosts ...string) *Client {
 
 	return &Client{
 		base: url.URL{Scheme: "http", Host: host},
-		HTTP: http.Client{},
 	}
 }
 
@@ -67,11 +48,7 @@ func (c *Client) do(ctx context.Context, method, path string, reqData, respData 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	for k, v := range c.Headers {
-		req.Header[k] = v
-	}
-
-	respObj, err := c.HTTP.Do(req)
+	respObj, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -82,8 +59,15 @@ func (c *Client) do(ctx context.Context, method, path string, reqData, respData 
 		return err
 	}
 
-	if err := checkError(respObj, respBody); err != nil {
-		return err
+	var errorResponse ErrorResponse
+	if err := json.Unmarshal(respBody, &errorResponse); err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	if errorResponse.Code >= 400 {
+		return errorResponse
+	} else if respObj.StatusCode >= 400 {
+		return ErrorResponse{Code: respObj.StatusCode, Message: errorResponse.Message}
 	}
 
 	if len(respBody) > 0 && respData != nil {
@@ -91,6 +75,7 @@ func (c *Client) do(ctx context.Context, method, path string, reqData, respData 
 			return err
 		}
 	}
+
 	return nil
 
 }
@@ -122,21 +107,17 @@ func (c *Client) stream(ctx context.Context, method, path string, data any, fn f
 
 	scanner := bufio.NewScanner(response.Body)
 	for scanner.Scan() {
-		var errorResponse struct {
-			Error string `json:"error,omitempty"`
-		}
-
 		bts := scanner.Bytes()
+
+		var errorResponse ErrorResponse
 		if err := json.Unmarshal(bts, &errorResponse); err != nil {
 			return fmt.Errorf("unmarshal: %w", err)
 		}
 
-		if response.StatusCode >= 400 {
-			return StatusError{
-				StatusCode: response.StatusCode,
-				Status:     response.Status,
-				Message:    errorResponse.Error,
-			}
+		if errorResponse.Code >= 400 {
+			return errorResponse
+		} else if response.StatusCode >= 400 {
+			return ErrorResponse{Code: response.StatusCode, Message: errorResponse.Message}
 		}
 
 		if err := fn(bts); err != nil {

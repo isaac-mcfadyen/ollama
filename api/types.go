@@ -2,22 +2,24 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
 )
 
-type StatusError struct {
-	StatusCode int
-	Status     string
-	Message    string
+type ErrorResponse struct {
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"error,omitempty"`
 }
 
-func (e StatusError) Error() string {
+func (e ErrorResponse) Error() string {
+	status := fmt.Sprintf("%d %s", e.Code, http.StatusText(e.Code))
 	if e.Message != "" {
-		return fmt.Sprintf("%s: %s", e.Status, e.Message)
+		return fmt.Sprintf("%s: %s", status, e.Message)
 	}
-	return e.Status
+
+	return fmt.Sprintf("%s: %s", status, e.Message)
 }
 
 type GenerateRequest struct {

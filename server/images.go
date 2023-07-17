@@ -174,23 +174,21 @@ func CreateModel(name string, mf io.Reader, fn func(status string)) error {
 				// if we couldn't read the manifest, try getting the bin file
 				fp, err := getAbsPath(c.Arg)
 				if err != nil {
-					fn("error determing path. exiting.")
-					return err
+					return fmt.Errorf("error getting path: %w", err)
 				}
 
 				fn("creating model layer")
 				file, err := os.Open(fp)
 				if err != nil {
-					fn(fmt.Sprintf("couldn't find model '%s'", c.Arg))
-					return fmt.Errorf("failed to open file: %v", err)
+					return fmt.Errorf("error opening file: %w", err)
 				}
 				defer file.Close()
 
 				l, err := CreateLayer(file)
 				if err != nil {
-					fn(fmt.Sprintf("couldn't create model layer: %v", err))
-					return fmt.Errorf("failed to create layer: %v", err)
+					return fmt.Errorf("error creating layer: %w", err)
 				}
+
 				l.MediaType = "application/vnd.ollama.image.model"
 				layers = append(layers, l)
 			} else {
@@ -198,9 +196,9 @@ func CreateModel(name string, mf io.Reader, fn func(status string)) error {
 				for _, l := range mf.Layers {
 					newLayer, err := GetLayerWithBufferFromLayer(l)
 					if err != nil {
-						fn(fmt.Sprintf("couldn't read layer: %v", err))
 						return err
 					}
+
 					layers = append(layers, newLayer)
 				}
 			}
@@ -212,9 +210,9 @@ func CreateModel(name string, mf io.Reader, fn func(status string)) error {
 			prompt := strings.NewReader(c.Arg)
 			l, err := CreateLayer(prompt)
 			if err != nil {
-				fn(fmt.Sprintf("couldn't create prompt layer: %v", err))
-				return fmt.Errorf("failed to create layer: %v", err)
+				return fmt.Errorf("error creating layer: %w", err)
 			}
+
 			l.MediaType = "application/vnd.ollama.image.prompt"
 			layers = append(layers, l)
 		default:
@@ -228,11 +226,12 @@ func CreateModel(name string, mf io.Reader, fn func(status string)) error {
 		layers = removeLayerFromLayers(layers, "application/vnd.ollama.image.params")
 		paramData, err := paramsToReader(params)
 		if err != nil {
-			return fmt.Errorf("couldn't create params json: %v", err)
+			return fmt.Errorf("error parsing parameters: %w", err)
 		}
+
 		l, err := CreateLayer(paramData)
 		if err != nil {
-			return fmt.Errorf("failed to create layer: %v", err)
+			return fmt.Errorf("error creating layer: %w", err)
 		}
 		l.MediaType = "application/vnd.ollama.image.params"
 		layers = append(layers, l)
@@ -258,16 +257,14 @@ func CreateModel(name string, mf io.Reader, fn func(status string)) error {
 
 	err = SaveLayers(layers, fn, false)
 	if err != nil {
-		fn(fmt.Sprintf("error saving layers: %v", err))
-		return err
+		return fmt.Errorf("error saving layers: %w", err)
 	}
 
 	// Create the manifest
 	fn("writing manifest")
 	err = CreateManifest(name, cfg, manifestLayers)
 	if err != nil {
-		fn(fmt.Sprintf("error creating manifest: %v", err))
-		return err
+		return fmt.Errorf("error creating manifest: %w", err)
 	}
 
 	fn("success")
@@ -298,8 +295,7 @@ func SaveLayers(layers []*LayerWithBuffer, fn func(status string), force bool) e
 			fn(fmt.Sprintf("writing layer %s", layer.Digest))
 			out, err := os.Create(fp)
 			if err != nil {
-				log.Printf("couldn't create %s", fp)
-				return err
+				return fmt.Errorf("error writing layer: %w", err)
 			}
 			defer out.Close()
 

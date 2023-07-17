@@ -77,7 +77,7 @@ func generate(c *gin.Context) {
 	ch := make(chan any)
 	go func() {
 		defer close(ch)
-		llm.Predict(req.Context, req.Prompt, func(r api.GenerateResponse) {
+		fn := func(r api.GenerateResponse) {
 			r.Model = req.Model
 			r.CreatedAt = time.Now().UTC()
 			if r.Done {
@@ -85,7 +85,10 @@ func generate(c *gin.Context) {
 			}
 
 			ch <- r
-		})
+		}
+		if err := llm.Predict(req.Context, req.Prompt, fn); err != nil {
+			ch <- api.ErrorResponse{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
 	}()
 
 	streamResponse(c, ch)
@@ -111,8 +114,7 @@ func pull(c *gin.Context) {
 			}
 		}
 		if err := PullModel(req.Name, req.Username, req.Password, fn); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			ch <- api.ErrorResponse{Code: http.StatusInternalServerError, Message: err.Error()}
 		}
 	}()
 
@@ -139,8 +141,7 @@ func push(c *gin.Context) {
 			}
 		}
 		if err := PushModel(req.Name, req.Username, req.Password, fn); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+			ch <- api.ErrorResponse{Code: http.StatusInternalServerError, Message: err.Error()}
 		}
 	}()
 
@@ -150,7 +151,7 @@ func push(c *gin.Context) {
 func create(c *gin.Context) {
 	var req api.CreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -158,7 +159,7 @@ func create(c *gin.Context) {
 
 	file, err := os.Open(req.Path)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	defer file.Close()
@@ -173,8 +174,7 @@ func create(c *gin.Context) {
 		}
 
 		if err := CreateModel(req.Name, file, fn); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
-			return
+			ch <- api.ErrorResponse{Code: http.StatusInternalServerError, Message: err.Error()}
 		}
 	}()
 
