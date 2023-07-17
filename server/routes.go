@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"text/template"
 	"time"
 
 	"dario.cat/mergo"
@@ -54,18 +52,11 @@ func generate(c *gin.Context) {
 		return
 	}
 
-	templ, err := template.New("").Parse(model.Prompt)
+	prompt, err := model.Prompt(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	var sb strings.Builder
-	if err = templ.Execute(&sb, req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	req.Prompt = sb.String()
 
 	llm, err := llama.New(model.ModelPath, opts)
 	if err != nil {
@@ -77,7 +68,7 @@ func generate(c *gin.Context) {
 	ch := make(chan any)
 	go func() {
 		defer close(ch)
-		llm.Predict(req.Context, req.Prompt, func(r api.GenerateResponse) {
+		llm.Predict(req.Context, prompt, func(r api.GenerateResponse) {
 			r.Model = req.Model
 			r.CreatedAt = time.Now().UTC()
 			if r.Done {
