@@ -5,13 +5,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/chzyer/readline"
 	"github.com/dustin/go-humanize"
 	"github.com/olekukonko/tablewriter"
 	"github.com/schollz/progressbar/v3"
@@ -105,7 +108,10 @@ func list(cmd *cobra.Command, args []string) error {
 	var data [][]string
 
 	for _, m := range models.Models {
-		data = append(data, []string{m.Name, humanize.Bytes(uint64(m.Size)), format.HumanTime(m.ModifiedAt, "Never")})
+		name, _, _ := strings.Cut(m.Name, ":")
+		if len(args) == 0 || name == args[0] {
+			data = append(data, []string{m.Name, humanize.Bytes(uint64(m.Size)), format.HumanTime(m.ModifiedAt, "Never")})
+		}
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -223,17 +229,102 @@ func generate(cmd *cobra.Command, model, prompt string) error {
 }
 
 func generateInteractive(cmd *cobra.Command, model string) error {
-	fmt.Print(">>> ")
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		if err := generate(cmd, model, scanner.Text()); err != nil {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	completer := readline.NewPrefixCompleter(
+		readline.PcItem("help"),
+		readline.PcItem("list"),
+		readline.PcItem("set",
+			readline.PcItem("history"),
+			readline.PcItem("nohistory"),
+			readline.PcItem("mode",
+				readline.PcItem("vim"),
+				readline.PcItem("emacs"),
+				readline.PcItem("default"),
+			),
+		),
+		readline.PcItem("exit"),
+		readline.PcItem("bye"),
+	)
+
+	usage := func() {
+		fmt.Fprintln(os.Stderr, "usage:")
+		fmt.Fprintln(os.Stderr, completer.Tree("  "))
+	}
+
+	config := readline.Config{
+		Prompt:       ">>> ",
+		HistoryFile:  filepath.Join(home, ".ollama", "history"),
+		AutoComplete: completer,
+	}
+
+	scanner, err := readline.NewEx(&config)
+	if err != nil {
+		return err
+	}
+	defer scanner.Close()
+
+	// disable history by default
+	scanner.HistoryDisable()
+
+	for {
+		line, err := scanner.Readline()
+		switch {
+		case errors.Is(err, io.EOF):
+			return nil
+		case errors.Is(err, readline.ErrInterrupt):
+			continue
+		case err != nil:
 			return err
 		}
 
-		fmt.Print(">>> ")
-	}
+		line = strings.TrimSpace(line)
 
-	return nil
+		switch {
+		case strings.HasPrefix(line, "list"):
+			args := strings.Fields(line)
+			if err := list(cmd, args[1:]); err != nil {
+				return err
+			}
+
+			continue
+		case strings.HasPrefix(line, "set"):
+			args := strings.Fields(line)
+			if len(args) > 1 {
+				switch args[1] {
+				case "history":
+					scanner.HistoryEnable()
+					continue
+				case "nohistory":
+					scanner.HistoryDisable()
+					continue
+				case "mode":
+					if len(args) > 2 {
+						switch args[2] {
+						case "vim":
+							scanner.SetVimMode(true)
+							continue
+						case "emacs", "default":
+							scanner.SetVimMode(false)
+							continue
+						}
+					}
+				}
+			}
+		case line == "help", line == "?":
+			usage()
+			continue
+		case line == "exit", line == "bye":
+			return nil
+		}
+
+		if err := generate(cmd, model, line); err != nil {
+			return err
+		}
+	}
 }
 
 func generateBatch(cmd *cobra.Command, model string) error {
