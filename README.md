@@ -14,7 +14,7 @@ Create, run and share self-contained large language models (LLMs). Think of it l
 ### Quickstart
 
 ```
-ollama run library/orca:latest
+ollama run llama2
 >>> hi
 Hello! How can I help you today?
 ```
@@ -24,13 +24,12 @@ Hello! How can I help you today?
 Create a `Modelfile`:
 
 ```
-FROM library/nous-hermes:latest
+FROM llama2
 PROMPT """
 You are super mario from super mario bros. Answer instructions as Mario only.
 
-### Instruction: {{ .Prompt }}
-
-### Response:
+User: {{ .Prompt }}
+Assitant:
 """
 ```
 
@@ -54,9 +53,10 @@ Ollama includes a library of open-source, pre-trained models. More models are co
 
 | Model       | Parameters | Size  | Download                                 |
 | ----------- | ---------- | ----- | ---------------------------------------- |
-| Orca Mini   | 3B         | 1.9GB | `ollama pull library/orca:latest`        |
-| Vicuna      | 7B         | 3.9GB | `ollama pull library/vicuna:latest`      |
-| Nous-Hermes | 13         | 7.2GB | `ollama pull library/nous-hermes:latest` |
+| Llama2   | 7B         | 3.5B | `ollama pull llama`        |
+| Orca Mini   | 3B         | 1.9GB | `ollama pull orca`        |
+| Vicuna      | 7B         | 3.9GB | `ollama pull vicuna`      |
+| Nous-Hermes | 13         | 7.2GB | `ollama pull hous-hermes` |
 
 ## Building
 
@@ -73,23 +73,5 @@ To run it start the server:
 Finally, run a model!
 
 ```
-./ollama run orca
-```
-
-## API Reference
-
-### `POST /api/pull`
-
-Download a model
-
-```
-curl -X POST http://localhost:11343/api/pull -d '{"model": "orca"}'
-```
-
-### `POST /api/generate`
-
-Complete a prompt
-
-```
-curl -X POST http://localhost:11434/api/generate -d '{"model": "orca", "prompt": "hello!"}'
+./ollama run llama2
 ```
