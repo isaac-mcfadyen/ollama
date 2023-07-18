@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -19,16 +20,17 @@ import (
 	"github.com/jmorganca/ollama/llama"
 )
 
-func cacheDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
+var mu sync.Mutex
 
-	return filepath.Join(home, ".ollama")
+var activeSession struct {
+	ID int64
+	*llama.LLM
 }
 
 func generate(c *gin.Context) {
+	mu.Lock()
+	defer mu.Unlock()
+
 	start := time.Now()
 
 	var req api.GenerateRequest
@@ -43,15 +45,31 @@ func generate(c *gin.Context) {
 		return
 	}
 
-	opts := api.DefaultOptions()
-	if err := mergo.Merge(&opts, model.Options, mergo.WithOverride); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	if req.SessionID == 0 || req.SessionID != activeSession.ID {
+		if activeSession.LLM != nil {
+			activeSession.Close()
+			activeSession.LLM = nil
+		}
 
-	if err := mergo.Merge(&opts, req.Options, mergo.WithOverride); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		opts := api.DefaultOptions()
+		if err := mergo.Merge(&opts, model.Options, mergo.WithOverride); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		if err := mergo.Merge(&opts, req.Options, mergo.WithOverride); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		llm, err := llama.New(model.ModelPath, opts)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		activeSession.ID = time.Now().UnixNano()
+		activeSession.LLM = llm
 	}
 
 	templ, err := template.New("").Parse(model.Prompt)
@@ -67,19 +85,13 @@ func generate(c *gin.Context) {
 	}
 	req.Prompt = sb.String()
 
-	llm, err := llama.New(model.ModelPath, opts)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer llm.Close()
-
 	ch := make(chan any)
 	go func() {
 		defer close(ch)
-		llm.Predict(req.Context, req.Prompt, func(r api.GenerateResponse) {
+		activeSession.Predict(req.Context, req.Prompt, func(r api.GenerateResponse) {
 			r.Model = req.Model
 			r.CreatedAt = time.Now().UTC()
+			r.SessionID = activeSession.ID
 			if r.Done {
 				r.TotalDuration = time.Since(start)
 			}
